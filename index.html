@@ -1,0 +1,837 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Bank of Brookhaven | Portal Financiero de Rol</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Firebase SDK (Compat v10) para sincronización en tiempo real -->
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.8.0/firebase-database-compat.js"></script>
+
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap');
+    
+    * { font-family: 'Plus Jakarta Sans', sans-serif; }
+    .font-mono { font-family: 'JetBrains Mono', monospace; }
+    
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #020617; }
+    ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: #10b981; }
+
+    .credit-card {
+      background: linear-gradient(135deg, #064e3b 0%, #022c22 45%, #0f172a 100%);
+      transition: transform 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275), box-shadow 0.4s ease;
+    }
+    .credit-card:hover {
+      transform: translateY(-4px) rotateX(2deg) rotateY(-2deg);
+    }
+  </style>
+</head>
+<body class="bg-[#030712] text-slate-100 min-h-screen flex flex-col antialiased selection:bg-emerald-500 selection:text-slate-950">
+
+  <!-- AVISO DE CIBERSEGURIDAD / RP -->
+  <div class="bg-amber-500/10 border-b border-amber-500/20 px-4 py-2 text-center text-xs text-amber-300 flex items-center justify-center gap-2">
+    <i data-lucide="shield-alert" class="w-4 h-4 shrink-0 text-amber-400"></i>
+    <span><strong>ENTORNO RP:</strong> Simulación exclusiva para Brookhaven. No ingreses credenciales reales de Roblox ni contraseñas personales.</span>
+  </div>
+
+  <!-- NAVEGACIÓN SUPERIOR -->
+  <header class="border-b border-slate-800/80 bg-slate-950/80 backdrop-blur-xl sticky top-0 z-40 px-4 lg:px-8 py-3.5 flex justify-between items-center">
+    <div class="flex items-center gap-3">
+      <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center font-black text-slate-950 text-xl shadow-lg shadow-emerald-500/20">
+        B
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <span class="font-extrabold tracking-tight text-base lg:text-lg">BROOKHAVEN</span>
+          <span class="text-[10px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.5 rounded-md font-mono font-bold tracking-widest">RESERVE</span>
+        </div>
+        <p class="text-[11px] text-slate-400 tracking-wide">Portal de Banca Ciudadana</p>
+      </div>
+    </div>
+
+    <!-- ESTADO, PERFIL Y SALIDA -->
+    <div class="flex items-center gap-3">
+      <div class="hidden sm:flex flex-col text-right">
+        <span class="text-xs font-semibold text-slate-200" id="headerUserName">Cargando...</span>
+        <span class="text-[10px] text-emerald-400 font-mono flex items-center justify-end gap-1.5" id="headerNetworkStatus">
+          <span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> Bóveda Conectada
+        </span>
+      </div>
+      <button onclick="handleLogout()" class="flex items-center gap-1.5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/20 px-3 py-2 rounded-xl text-xs font-semibold transition active:scale-95" title="Cerrar Sesión">
+        <i data-lucide="log-out" class="w-4 h-4"></i>
+        <span class="hidden md:inline">Salir</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- CONTENEDOR PRINCIPAL -->
+  <div class="flex-1 max-w-7xl w-full mx-auto p-4 lg:p-8 grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+    <!-- SIDEBAR -->
+    <aside class="lg:col-span-3 space-y-4">
+      <nav class="bg-slate-900/50 border border-slate-800/80 rounded-2xl p-2.5 backdrop-blur-md space-y-1">
+        <button onclick="switchTab('dashboard')" id="tab-btn-dashboard" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition text-emerald-400 bg-emerald-500/10 border border-emerald-500/20">
+          <i data-lucide="layout-dashboard" class="w-4 h-4"></i>
+          <span>Resumen Global</span>
+        </button>
+        <button onclick="switchTab('transfer')" id="tab-btn-transfer" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition text-slate-400 hover:text-slate-200 hover:bg-slate-800/60">
+          <i data-lucide="send" class="w-4 h-4"></i>
+          <span>Transferencias</span>
+        </button>
+        <button onclick="switchTab('cards')" id="tab-btn-cards" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition text-slate-400 hover:text-slate-200 hover:bg-slate-800/60">
+          <i data-lucide="credit-card" class="w-4 h-4"></i>
+          <span>Tarjetas & Seguridad</span>
+        </button>
+        <button onclick="switchTab('loans')" id="tab-btn-loans" class="nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition text-slate-400 hover:text-slate-200 hover:bg-slate-800/60">
+          <i data-lucide="calculator" class="w-4 h-4"></i>
+          <span>Créditos & Hipotecas</span>
+        </button>
+      </nav>
+
+      <!-- RESUMEN CUENTA -->
+      <div class="bg-gradient-to-b from-slate-900/80 to-slate-950 border border-slate-800/80 rounded-2xl p-5 space-y-4">
+        <div class="flex justify-between items-center">
+          <span class="text-xs uppercase tracking-wider text-slate-400 font-mono">No. de Cuenta</span>
+          <button onclick="copyToClipboard('accNumberDisp', '¡Número de cuenta copiado!')" class="text-slate-400 hover:text-emerald-400 transition" title="Copiar cuenta">
+            <i data-lucide="copy" class="w-3.5 h-3.5"></i>
+          </button>
+        </div>
+        <p class="font-mono text-sm font-bold text-slate-200 tracking-wider" id="accNumberDisp">BK-0000-0000</p>
+        
+        <div class="pt-3 border-t border-slate-800 flex justify-between items-center text-xs">
+          <span class="text-slate-400">Estado</span>
+          <span class="text-emerald-400 font-semibold flex items-center gap-1">
+            <i data-lucide="check-circle-2" class="w-3.5 h-3.5"></i> Activa
+          </span>
+        </div>
+      </div>
+    </aside>
+
+    <!-- CONTENIDO DINÁMICO -->
+    <main class="lg:col-span-9 space-y-6">
+
+      <!-- PESTAÑA 1: DASHBOARD -->
+      <section id="view-dashboard" class="space-y-6">
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+          
+          <!-- SALDOS -->
+          <div class="md:col-span-7 bg-slate-900/60 border border-slate-800/80 rounded-3xl p-6 lg:p-7 flex flex-col justify-between relative overflow-hidden backdrop-blur-xl">
+            <div class="absolute -right-10 -bottom-10 w-44 h-44 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
+            
+            <div class="space-y-1">
+              <div class="flex items-center justify-between">
+                <span class="text-xs font-mono uppercase tracking-widest text-slate-400">Fondos Disponibles</span>
+                <span class="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">RP Balance</span>
+              </div>
+              <div class="flex items-baseline gap-2 pt-2">
+                <span class="text-2xl font-light text-slate-400">$</span>
+                <h1 class="text-4xl lg:text-5xl font-black tracking-tight text-white font-mono" id="mainBalanceDisplay">0.00</h1>
+              </div>
+            </div>
+
+            <!-- BOTONES DE ACCIÓN (CON COOLDOWN EN VIVO) -->
+            <div class="grid grid-cols-2 gap-3 pt-6 mt-4 border-t border-slate-800/80">
+              <button onclick="switchTab('transfer')" class="flex items-center justify-center gap-2 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold py-3 px-4 rounded-xl transition duration-200 text-xs shadow-lg shadow-emerald-500/20 active:scale-[0.98]">
+                <i data-lucide="arrow-up-right" class="w-4 h-4"></i>
+                Transferir
+              </button>
+              <button id="btnSalaryClaim" onclick="claimDailySalary()" class="flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-700 text-slate-200 font-semibold py-3 px-4 rounded-xl transition duration-200 text-xs border border-slate-700/60 active:scale-[0.98]">
+                <i data-lucide="briefcase" id="salaryIcon" class="w-4 h-4 text-emerald-400"></i>
+                <span id="salaryBtnText">Cobrar Sueldo RP</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- TARJETA VIRTUAL -->
+          <div class="md:col-span-5 flex flex-col justify-center">
+            <div id="virtualCardVisual" class="credit-card rounded-2xl p-6 text-white relative overflow-hidden border border-emerald-400/20 select-none shadow-2xl">
+              <div class="absolute inset-0 bg-[radial-gradient(#ffffff_1px,transparent_1px)] [background-size:16px_16px] opacity-10"></div>
+              
+              <div id="cardFrozenBadge" class="hidden absolute inset-0 bg-slate-950/90 backdrop-blur-sm z-20 flex flex-col items-center justify-center text-center p-4">
+                <i data-lucide="lock" class="w-10 h-10 text-rose-500 mb-2 animate-bounce"></i>
+                <p class="font-bold text-sm tracking-wider text-rose-400 uppercase">Tarjeta Bloqueada</p>
+                <p class="text-[11px] text-slate-400">Desactiva el bloqueo en Seguridad</p>
+              </div>
+
+              <div class="relative z-10 flex justify-between items-start mb-6">
+                <div>
+                  <span class="text-[10px] tracking-widest text-emerald-300 font-mono uppercase block">Brookhaven Reserve</span>
+                  <span class="font-black italic tracking-wider text-sm text-slate-100">PLATINUM RP</span>
+                </div>
+                <div class="w-9 h-7 rounded-md bg-gradient-to-br from-amber-300 to-amber-500 border border-amber-600 shadow-inner flex items-center justify-center">
+                  <div class="w-full h-[1px] bg-amber-700/60"></div>
+                </div>
+              </div>
+
+              <div class="relative z-10 text-lg lg:text-xl font-mono tracking-[0.22em] text-slate-100 mb-6 drop-shadow">
+                •••• •••• •••• <span id="cardLastFour">0000</span>
+              </div>
+
+              <div class="relative z-10 flex justify-between items-end">
+                <div>
+                  <p class="text-[9px] uppercase tracking-wider text-emerald-300/80 font-mono">Titular</p>
+                  <p class="font-bold text-xs tracking-wider uppercase text-slate-100" id="cardHolderName">CIUDADANO</p>
+                </div>
+                <div class="text-right">
+                  <p class="text-[9px] uppercase tracking-wider text-emerald-300/80 font-mono">Expira</p>
+                  <p class="font-mono text-xs font-semibold text-slate-100">12/30</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- MOVIMIENTOS RECIENTES -->
+        <div class="bg-slate-900/60 border border-slate-800/80 rounded-3xl p-6 backdrop-blur-xl space-y-4">
+          <div class="flex justify-between items-center pb-2 border-b border-slate-800">
+            <div>
+              <h3 class="font-bold text-base text-slate-100">Movimientos de Cuenta</h3>
+              <p class="text-xs text-slate-400">Registro auditable de operaciones en vivo</p>
+            </div>
+            <button onclick="updateInterface()" class="text-slate-400 hover:text-emerald-400 p-1.5 transition" title="Refrescar">
+              <i data-lucide="refresh-cw" class="w-4 h-4"></i>
+            </button>
+          </div>
+
+          <div class="space-y-2.5 overflow-x-auto" id="transactionsListContainer">
+            <!-- Transacciones inyectadas dinámicamente -->
+          </div>
+        </div>
+      </section>
+
+      <!-- PESTAÑA 2: TRANSFERENCIAS -->
+      <section id="view-transfer" class="hidden space-y-6">
+        <div class="bg-slate-900/60 border border-slate-800/80 rounded-3xl p-6 lg:p-8 backdrop-blur-xl">
+          <div class="max-w-xl mx-auto space-y-6">
+            <div class="text-center space-y-1">
+              <div class="w-12 h-12 rounded-2xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 flex items-center justify-center mx-auto mb-3">
+                <i data-lucide="send" class="w-6 h-6"></i>
+              </div>
+              <h2 class="text-2xl font-black text-white">Transferencia Interbancaria</h2>
+              <p class="text-xs text-slate-400">Envía dinero en tiempo real por Número de Cuenta</p>
+            </div>
+
+            <form id="transferForm" onsubmit="executeCloudTransfer(event)" class="space-y-4">
+              <div class="space-y-1.5">
+                <label class="text-xs font-semibold uppercase tracking-wider text-slate-300 font-mono">No. de Cuenta de Destino</label>
+                <div class="relative">
+                  <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500">
+                    <i data-lucide="hash" class="w-4 h-4"></i>
+                  </div>
+                  <input type="text" id="targetAccountInput" required placeholder="Ej: BK-4820-9182" 
+                    class="w-full pl-10 pr-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-emerald-500 transition font-mono uppercase">
+                </div>
+              </div>
+
+              <div class="space-y-1.5">
+                <div class="flex justify-between items-center">
+                  <label class="text-xs font-semibold uppercase tracking-wider text-slate-300 font-mono">Monto a Enviar ($)</label>
+                  <span class="text-xs text-slate-400 font-mono">Saldo: <span class="text-emerald-400 font-bold" id="transferMaxDisplay">$0</span></span>
+                </div>
+                <div class="relative">
+                  <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-500 font-bold">$</div>
+                  <input type="number" id="transferAmountInput" required min="1" step="any" placeholder="0.00" 
+                    class="w-full pl-10 pr-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-lg font-bold font-mono text-emerald-400 placeholder:text-slate-700 focus:outline-none focus:border-emerald-500 transition">
+                </div>
+              </div>
+
+              <div class="space-y-1.5">
+                <label class="text-xs font-semibold uppercase tracking-wider text-slate-300 font-mono">Concepto / Motivo de Rol</label>
+                <input type="text" id="transferMemoInput" maxlength="50" placeholder="Ej: Compra de vehículo / Pago de servicios" 
+                  class="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-100 placeholder:text-slate-600 focus:outline-none focus:border-emerald-500 transition">
+              </div>
+
+              <button type="submit" id="btnSubmitTransfer" class="w-full py-3.5 bg-emerald-500 hover:bg-emerald-400 disabled:opacity-50 disabled:cursor-not-allowed text-slate-950 font-bold rounded-xl text-sm transition shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-2 mt-4 active:scale-[0.99]">
+                <i data-lucide="shield-check" class="w-4 h-4"></i>
+                <span id="transferBtnText">Transferir Fondos</span>
+              </button>
+            </form>
+          </div>
+        </div>
+      </section>
+
+      <!-- PESTAÑA 3: SEGURIDAD -->
+      <section id="view-cards" class="hidden space-y-6">
+        <div class="bg-slate-900/60 border border-slate-800/80 rounded-3xl p-6 backdrop-blur-xl space-y-5 max-w-xl mx-auto">
+          <div>
+            <h3 class="font-bold text-lg text-slate-100">Seguridad & Plástico Digital</h3>
+            <p class="text-xs text-slate-400">Control de activación de tu cuenta de rol</p>
+          </div>
+
+          <div class="space-y-4">
+            <div class="flex items-center justify-between p-4 bg-slate-950 border border-slate-800/80 rounded-2xl">
+              <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-rose-500/10 text-rose-400 flex items-center justify-center">
+                  <i data-lucide="lock" class="w-4 h-4"></i>
+                </div>
+                <div>
+                  <p class="text-sm font-semibold text-slate-200">Congelar Tarjeta</p>
+                  <p class="text-[11px] text-slate-500">Bloquea transferencias de salida</p>
+                </div>
+              </div>
+              <input type="checkbox" id="freezeCardToggle" onchange="toggleCardFreeze()" class="w-5 h-5 accent-emerald-500 cursor-pointer">
+            </div>
+
+            <div class="flex items-center justify-between p-4 bg-slate-950 border border-slate-800/80 rounded-2xl">
+              <div class="flex items-center gap-3">
+                <div class="w-9 h-9 rounded-xl bg-amber-500/10 text-amber-400 flex items-center justify-center">
+                  <i data-lucide="key-round" class="w-4 h-4"></i>
+                </div>
+                <div>
+                  <p class="text-sm font-semibold text-slate-200">Código de Seguridad (CVV)</p>
+                  <p class="text-[11px] text-slate-500">Para compras en establecimientos de rol</p>
+                </div>
+              </div>
+              <button onclick="revealCVV()" id="btnRevealCvv" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-xs font-mono font-bold rounded-lg transition text-slate-300">
+                ••••
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PESTAÑA 4: PRÉSTAMOS -->
+      <section id="view-loans" class="hidden space-y-6">
+        <div class="bg-slate-900/60 border border-slate-800/80 rounded-3xl p-6 lg:p-8 backdrop-blur-xl max-w-xl mx-auto space-y-6">
+          <div>
+            <h2 class="text-2xl font-black text-white">Calculadora Crediticia RP</h2>
+            <p class="text-xs text-slate-400">Tasas reguladas para adquisición de propiedades</p>
+          </div>
+
+          <div class="space-y-4">
+            <div class="space-y-2">
+              <label class="text-xs font-semibold text-slate-300 font-mono">Monto Deseado ($)</label>
+              <input type="number" id="loanAmountInput" value="25000" step="1000" oninput="calculateLoan()" 
+                class="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-emerald-400 font-mono font-bold text-lg focus:outline-none focus:border-emerald-500">
+            </div>
+
+            <div class="p-5 bg-slate-950 border border-slate-800 rounded-2xl grid grid-cols-2 gap-4 text-center">
+              <div>
+                <p class="text-xs text-slate-400 uppercase font-mono">Cuota Semanal</p>
+                <p class="text-xl font-black text-emerald-400 font-mono mt-1" id="loanMonthlyDisplay">$2,250</p>
+              </div>
+              <div>
+                <p class="text-xs text-slate-400 uppercase font-mono">Total a Devolver</p>
+                <p class="text-xl font-black text-slate-200 font-mono mt-1" id="loanTotalDisplay">$27,000</p>
+              </div>
+            </div>
+
+            <button onclick="showToast('Solicitud enviada a la junta bancaria', 'success')" class="w-full py-3.5 bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold rounded-xl text-xs transition">
+              Emitir Petición
+            </button>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <!-- MODAL: LOGIN / REGISTRO -->
+  <div id="authModal" class="fixed inset-0 z-50 bg-[#030712]/95 backdrop-blur-xl flex items-center justify-center p-4">
+    <div class="bg-slate-900 border border-slate-800 max-w-md w-full rounded-3xl p-6 lg:p-8 space-y-6 shadow-2xl relative">
+      
+      <div class="text-center space-y-2">
+        <div class="w-14 h-14 rounded-2xl bg-gradient-to-tr from-emerald-600 to-teal-400 flex items-center justify-center font-black text-slate-950 text-2xl mx-auto shadow-xl shadow-emerald-500/20">
+          B
+        </div>
+        <h2 class="text-2xl font-black tracking-tight text-white">Bank of Brookhaven</h2>
+        <p class="text-xs text-slate-400">Ingresa a tu cuenta de rol o abre una nueva en segundos</p>
+      </div>
+
+      <!-- Selector: Iniciar Sesión / Registrarse -->
+      <div class="grid grid-cols-2 p-1 bg-slate-950 rounded-xl border border-slate-800">
+        <button id="authTabLogin" onclick="setAuthMode('login')" class="py-2 text-xs font-bold rounded-lg transition bg-emerald-500 text-slate-950">
+          Iniciar Sesión
+        </button>
+        <button id="authTabRegister" onclick="setAuthMode('register')" class="py-2 text-xs font-bold rounded-lg transition text-slate-400 hover:text-white">
+          Crear Cuenta
+        </button>
+      </div>
+
+      <!-- FORMULARIO LOGIN -->
+      <form id="formLogin" onsubmit="handleAuthLogin(event)" class="space-y-4">
+        <div class="space-y-1.5">
+          <label class="text-xs font-semibold text-slate-300 font-mono">Número de Cuenta</label>
+          <input type="text" id="loginAccNumber" required placeholder="Ej: BK-1092-4820" 
+            class="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-100 font-mono uppercase focus:outline-none focus:border-emerald-500">
+        </div>
+        <div class="space-y-1.5">
+          <label class="text-xs font-semibold text-slate-300 font-mono">PIN de Seguridad (4 Dígitos)</label>
+          <input type="password" id="loginPin" required maxlength="4" placeholder="••••" 
+            class="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-center font-mono text-emerald-400 text-xl tracking-[0.5em] focus:outline-none focus:border-emerald-500">
+        </div>
+        <button type="submit" class="w-full py-3.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl text-sm transition shadow-lg shadow-emerald-500/20">
+          Acceder a mi Cuenta
+        </button>
+      </form>
+
+      <!-- FORMULARIO REGISTRO -->
+      <form id="formRegister" onsubmit="handleAuthRegister(event)" class="space-y-4 hidden">
+        <div class="space-y-1.5">
+          <label class="text-xs font-semibold text-slate-300 font-mono">Nombre de tu Personaje de Rol</label>
+          <input type="text" id="registerName" required placeholder="Ej: Roberto Gomez" 
+            class="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-slate-100 focus:outline-none focus:border-emerald-500">
+        </div>
+        <div class="space-y-1.5">
+          <label class="text-xs font-semibold text-slate-300 font-mono">Crea un PIN de 4 Dígitos</label>
+          <input type="password" id="registerPin" required maxlength="4" placeholder="••••" 
+            class="w-full px-4 py-3 bg-slate-950 border border-slate-800 rounded-xl text-sm text-center font-mono text-emerald-400 text-xl tracking-[0.5em] focus:outline-none focus:border-emerald-500">
+          <p class="text-[10px] text-slate-500 text-center">Recuerda este PIN para entrar siempre a tu cuenta</p>
+        </div>
+        <button type="submit" class="w-full py-3.5 bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold rounded-xl text-sm transition shadow-lg shadow-emerald-500/20">
+          Registrar y Recibir $5,000 RP
+        </button>
+      </form>
+
+    </div>
+  </div>
+
+  <!-- TOAST NOTIFICACIONES -->
+  <div id="toastContainer" class="fixed bottom-5 right-5 z-50 space-y-2 pointer-events-none"></div>
+
+  <!-- ======================================================== -->
+  <!-- LÓGICA CORE: BLINDADA CONTRA BUGS Y SPAM -->
+  <!-- ======================================================== -->
+  <script>
+    // CONFIGURACIÓN OFICIAL FIREBASE
+    const firebaseConfig = {
+      apiKey: "AIzaSyChjvMxqQx4QnjIJYP4AIYIdfPX85UCoCs",
+      authDomain: "banco-latam-rp.firebaseapp.com",
+      databaseURL: "https://banco-latam-rp-default-rtdb.firebaseio.com",
+      projectId: "banco-latam-rp",
+      storageBucket: "banco-latam-rp.firebasestorage.app",
+      messagingSenderId: "368674305028",
+      appId: "1:368674305028:web:22d3d14e40ee7c7e2f3151",
+      measurementId: "G-KFQ4P2HWFB"
+    };
+
+    firebase.initializeApp(firebaseConfig);
+    const database = firebase.database();
+
+    let currentAccount = null;
+    let salaryInterval = null;
+    const SALARY_COOLDOWN_MS = 10 * 60 * 1000; // 10 Minutos de Cooldown estricto
+
+    // GESTIÓN LOGIN / REGISTRO
+    function setAuthMode(mode) {
+      const isLogin = mode === 'login';
+      document.getElementById('formLogin').classList.toggle('hidden', !isLogin);
+      document.getElementById('formRegister').classList.toggle('hidden', isLogin);
+
+      document.getElementById('authTabLogin').className = isLogin 
+        ? "py-2 text-xs font-bold rounded-lg transition bg-emerald-500 text-slate-950"
+        : "py-2 text-xs font-bold rounded-lg transition text-slate-400 hover:text-white";
+
+      document.getElementById('authTabRegister').className = !isLogin 
+        ? "py-2 text-xs font-bold rounded-lg transition bg-emerald-500 text-slate-950"
+        : "py-2 text-xs font-bold rounded-lg transition text-slate-400 hover:text-white";
+    }
+
+    // REGISTRO SEGURO
+    async function handleAuthRegister(e) {
+      e.preventDefault();
+      const name = document.getElementById('registerName').value.trim();
+      const pin = document.getElementById('registerPin').value.trim();
+
+      if (pin.length !== 4 || isNaN(pin)) {
+        showToast("El PIN debe ser de exactamente 4 números", "error");
+        return;
+      }
+
+      const randNum = () => Math.floor(1000 + Math.random() * 9000);
+      const accNumber = `BK-${randNum()}-${randNum()}`;
+      const cardNumber = `5412 ${randNum()} ${randNum()} ${randNum()}`;
+      const cardCvv = String(Math.floor(100 + Math.random() * 900));
+
+      const newAccount = {
+        name: name,
+        pin: pin,
+        accountNumber: accNumber,
+        cardNumber: cardNumber,
+        cardCvv: cardCvv,
+        cardFrozen: false,
+        balance: 5000.00,
+        lastSalaryClaim: 0, // Listo para cobrar sueldo
+        transactions: [
+          {
+            id: "TX-" + Math.floor(100000 + Math.random() * 900000),
+            desc: "Bono Apertura Ciudadana",
+            amount: 5000.00,
+            type: "in",
+            date: "Hoy, " + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+          }
+        ]
+      };
+
+      await database.ref('accounts/' + accNumber).set(newAccount);
+
+      localStorage.setItem('current_session_acc', accNumber);
+      currentAccount = newAccount;
+      
+      document.getElementById('authModal').classList.add('hidden');
+      listenToAccountChanges(accNumber);
+      updateInterface();
+      showToast(`¡Cuenta Creada! Tu número es: ${accNumber}`, "success");
+    }
+
+    // LOGIN
+    async function handleAuthLogin(e) {
+      e.preventDefault();
+      const accNumber = document.getElementById('loginAccNumber').value.trim().toUpperCase();
+      const pin = document.getElementById('loginPin').value.trim();
+
+      const snap = await database.ref('accounts/' + accNumber).once('value');
+      const account = snap.val();
+
+      if (!account || account.pin !== pin) {
+        showToast("Número de cuenta o PIN incorrectos", "error");
+        return;
+      }
+
+      localStorage.setItem('current_session_acc', accNumber);
+      currentAccount = account;
+      document.getElementById('authModal').classList.add('hidden');
+      listenToAccountChanges(accNumber);
+      updateInterface();
+      showToast(`Bienvenido de nuevo, ${account.name}`, "success");
+    }
+
+    // LOGOUT SEGURO
+    function handleLogout() {
+      if (currentAccount) {
+        database.ref('accounts/' + currentAccount.accountNumber).off();
+      }
+      if (salaryInterval) clearInterval(salaryInterval);
+      
+      localStorage.removeItem('current_session_acc');
+      currentAccount = null;
+      document.getElementById('authModal').classList.remove('hidden');
+      document.getElementById('btnRevealCvv').innerText = "••••";
+      document.getElementById('btnRevealCvv').classList.remove('text-emerald-400');
+      cvvRevealed = false;
+      showToast("Sesión cerrada correctamente", "success");
+    }
+
+    // ESCUCHADOR EN VIVO (FIREBASE SOCKET)
+    function listenToAccountChanges(accNumber) {
+      database.ref('accounts/' + accNumber).on('value', (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+          currentAccount = data;
+          updateInterface();
+        }
+      });
+    }
+
+    // COBRAR SUELDO RP (CON COOLDOWN EN LA NUBE)
+    async function claimDailySalary() {
+      if (!currentAccount) return;
+
+      const now = Date.now();
+      const lastClaim = currentAccount.lastSalaryClaim || 0;
+      const timePassed = now - lastClaim;
+
+      if (timePassed < SALARY_COOLDOWN_MS) {
+        const remainingSec = Math.ceil((SALARY_COOLDOWN_MS - timePassed) / 1000);
+        const mins = Math.floor(remainingSec / 60);
+        const secs = remainingSec % 60;
+        showToast(`Descansando de tu turno. Espera ${mins}m ${secs}s`, "error");
+        return;
+      }
+
+      // Bloquear temporalmente el botón mientras se escribe en Firebase
+      const btn = document.getElementById('btnSalaryClaim');
+      btn.disabled = true;
+
+      const salary = 1200.00;
+      currentAccount.balance = Math.round((Number(currentAccount.balance) + salary) * 100) / 100;
+      currentAccount.lastSalaryClaim = now;
+      currentAccount.transactions = currentAccount.transactions || [];
+      
+      currentAccount.transactions.unshift({
+        id: "TX-" + Math.floor(100000 + Math.random() * 900000),
+        desc: "Jornada Laboral Brookhaven",
+        amount: salary,
+        type: "in",
+        date: "Hoy, " + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      });
+
+      await database.ref('accounts/' + currentAccount.accountNumber).set(currentAccount);
+      updateInterface();
+      showToast(`¡Has cobrado tu salario de $${formatCurrency(salary)}!`, "success");
+    }
+
+    // MONITOR DEL TEMPORIZADOR DE SUELDO
+    function startSalaryCooldownTimer() {
+      if (salaryInterval) clearInterval(salaryInterval);
+
+      salaryInterval = setInterval(() => {
+        if (!currentAccount) return;
+
+        const now = Date.now();
+        const lastClaim = currentAccount.lastSalaryClaim || 0;
+        const timePassed = now - lastClaim;
+        const btn = document.getElementById('btnSalaryClaim');
+        const text = document.getElementById('salaryBtnText');
+
+        if (timePassed < SALARY_COOLDOWN_MS) {
+          const remainingSec = Math.ceil((SALARY_COOLDOWN_MS - timePassed) / 1000);
+          const mins = Math.floor(remainingSec / 60);
+          const secs = remainingSec % 60;
+          const fmt = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+          
+          btn.disabled = true;
+          btn.classList.add('opacity-60', 'cursor-not-allowed');
+          text.innerText = `Espera ${fmt}`;
+        } else {
+          btn.disabled = false;
+          btn.classList.remove('opacity-60', 'cursor-not-allowed');
+          text.innerText = "Cobrar Sueldo RP";
+        }
+      }, 1000);
+    }
+
+    // TRANSFERENCIAS BLINDADAS (ANTI RACE-CONDITION)
+    async function executeCloudTransfer(e) {
+      e.preventDefault();
+      if (!currentAccount) return;
+
+      const btnSubmit = document.getElementById('btnSubmitTransfer');
+      const btnText = document.getElementById('transferBtnText');
+
+      if (currentAccount.cardFrozen) {
+        showToast("Tu tarjeta está congelada. Desbloquéala en Seguridad.", "error");
+        return;
+      }
+
+      const targetAcc = document.getElementById('targetAccountInput').value.trim().toUpperCase();
+      let rawAmount = parseFloat(document.getElementById('transferAmountInput').value);
+      const memo = document.getElementById('transferMemoInput').value.trim() || "Transferencia Interbancaria";
+
+      // Sanitizar decimales
+      const amount = Math.floor(rawAmount * 100) / 100;
+
+      if (targetAcc === currentAccount.accountNumber) {
+        showToast("No puedes transferirte a ti mismo", "error");
+        return;
+      }
+
+      if (isNaN(amount) || amount <= 0 || !isFinite(amount)) {
+        showToast("Ingresa un monto válido mayor a $0", "error");
+        return;
+      }
+
+      if (amount > currentAccount.balance) {
+        showToast("Saldo insuficiente para completar la operación", "error");
+        return;
+      }
+
+      // Bloquear botón para evitar spam de clics (anti-dupe exploit)
+      btnSubmit.disabled = true;
+      btnText.innerText = "Verificando Bóveda...";
+
+      try {
+        const targetSnap = await database.ref('accounts/' + targetAcc).once('value');
+        const targetData = targetSnap.val();
+
+        if (!targetData) {
+          showToast("La cuenta destino no existe en Brookhaven", "error");
+          btnSubmit.disabled = false;
+          btnText.innerText = "Transferir Fondos";
+          return;
+        }
+
+        const txCode = "TX-" + Math.floor(100000 + Math.random() * 900000);
+        const now = "Hoy, " + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+        // 1. Descontar al emisor
+        currentAccount.balance = Math.round((currentAccount.balance - amount) * 100) / 100;
+        currentAccount.transactions = currentAccount.transactions || [];
+        currentAccount.transactions.unshift({
+          id: txCode,
+          desc: `Envío a ${targetAcc} (${memo})`,
+          amount: amount,
+          type: "out",
+          date: now
+        });
+        await database.ref('accounts/' + currentAccount.accountNumber).set(currentAccount);
+
+        // 2. Acreditar al receptor
+        targetData.balance = Math.round((Number(targetData.balance) + amount) * 100) / 100;
+        targetData.transactions = targetData.transactions || [];
+        targetData.transactions.unshift({
+          id: txCode,
+          desc: `Recibido de ${currentAccount.accountNumber} (${memo})`,
+          amount: amount,
+          type: "in",
+          date: now
+        });
+        await database.ref('accounts/' + targetAcc).set(targetData);
+
+        document.getElementById('transferForm').reset();
+        updateInterface();
+        switchTab('dashboard');
+        showToast(`¡Transferencia de $${formatCurrency(amount)} realizada con éxito!`, "success");
+
+      } catch (err) {
+        console.error(err);
+        showToast("Error de conexión al procesar la transferencia", "error");
+      } finally {
+        btnSubmit.disabled = false;
+        btnText.innerText = "Transferir Fondos";
+      }
+    }
+
+    // FORMATEADOR DE MONEDA
+    function formatCurrency(val) {
+      return new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val || 0);
+    }
+
+    // ACTUALIZACIÓN DE INTERFAZ
+    function updateInterface() {
+      if (!currentAccount) return;
+
+      document.getElementById('mainBalanceDisplay').innerText = formatCurrency(currentAccount.balance);
+      document.getElementById('transferMaxDisplay').innerText = `$${formatCurrency(currentAccount.balance)}`;
+      document.getElementById('headerUserName').innerText = currentAccount.name;
+      document.getElementById('cardHolderName').innerText = currentAccount.name;
+      document.getElementById('accNumberDisp').innerText = currentAccount.accountNumber;
+
+      const digits = (currentAccount.cardNumber || "0000000000000000").replace(/\s+/g, '');
+      document.getElementById('cardLastFour').innerText = digits.slice(-4);
+
+      const frozenBadge = document.getElementById('cardFrozenBadge');
+      const freezeToggle = document.getElementById('freezeCardToggle');
+      frozenBadge.classList.toggle('hidden', !currentAccount.cardFrozen);
+      freezeToggle.checked = currentAccount.cardFrozen;
+
+      renderTransactions(currentAccount.transactions || []);
+      startSalaryCooldownTimer();
+      lucide.createIcons();
+    }
+
+    // RENDERIZADO DE TRANSACCIONES
+    function renderTransactions(list) {
+      const container = document.getElementById('transactionsListContainer');
+      container.innerHTML = "";
+
+      if (list.length === 0) {
+        container.innerHTML = `<p class="text-xs text-slate-500 text-center py-6">Sin movimientos registrados</p>`;
+        return;
+      }
+
+      list.slice(0, 10).forEach(tx => {
+        const isIncome = tx.type === 'in';
+        const row = document.createElement('div');
+        row.className = "flex items-center justify-between p-3.5 bg-slate-950/60 border border-slate-800/60 rounded-xl hover:border-slate-700/80 transition";
+        row.innerHTML = `
+          <div class="flex items-center gap-3">
+            <div class="w-8 h-8 rounded-lg ${isIncome ? 'bg-emerald-500/10 text-emerald-400' : 'bg-rose-500/10 text-rose-400'} flex items-center justify-center">
+              <i data-lucide="${isIncome ? 'arrow-down-left' : 'arrow-up-right'}" class="w-4 h-4"></i>
+            </div>
+            <div>
+              <p class="text-xs font-semibold text-slate-200">${tx.desc}</p>
+              <div class="flex items-center gap-2 text-[10px] text-slate-500 font-mono">
+                <span>${tx.date}</span><span>•</span><span>${tx.id}</span>
+              </div>
+            </div>
+          </div>
+          <span class="font-mono text-xs font-bold ${isIncome ? 'text-emerald-400' : 'text-slate-300'}">
+            ${isIncome ? '+' : '-'}$${formatCurrency(tx.amount)}
+          </span>
+        `;
+        container.appendChild(row);
+      });
+      lucide.createIcons();
+    }
+
+    // NAVEGACIÓN
+    function switchTab(tabId) {
+      ['dashboard', 'transfer', 'cards', 'loans'].forEach(tab => {
+        const view = document.getElementById(`view-${tab}`);
+        const btn = document.getElementById(`tab-btn-${tab}`);
+        if (view) view.classList.add('hidden');
+        if (btn) btn.className = "nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition text-slate-400 hover:text-slate-200 hover:bg-slate-800/60";
+      });
+
+      const activeView = document.getElementById(`view-${tabId}`);
+      const activeBtn = document.getElementById(`tab-btn-${tabId}`);
+      if (activeView) activeView.classList.remove('hidden');
+      if (activeBtn) activeBtn.className = "nav-btn w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition text-emerald-400 bg-emerald-500/10 border border-emerald-500/20";
+      lucide.createIcons();
+    }
+
+    // CONGELAR TARJETA
+    async function toggleCardFreeze() {
+      if (!currentAccount) return;
+      currentAccount.cardFrozen = !currentAccount.cardFrozen;
+      await database.ref('accounts/' + currentAccount.accountNumber).set(currentAccount);
+      updateInterface();
+      showToast(currentAccount.cardFrozen ? "Tarjeta Congelada" : "Tarjeta Reactivada", currentAccount.cardFrozen ? "error" : "success");
+    }
+
+    // REVELAR CVV
+    let cvvRevealed = false;
+    function revealCVV() {
+      if (!currentAccount) return;
+      cvvRevealed = !cvvRevealed;
+      const btn = document.getElementById('btnRevealCvv');
+      btn.innerText = cvvRevealed ? currentAccount.cardCvv : "••••";
+      btn.classList.toggle('text-emerald-400', cvvRevealed);
+    }
+
+    // PRÉSTAMOS
+    function calculateLoan() {
+      const amount = parseFloat(document.getElementById('loanAmountInput').value) || 0;
+      const total = amount * 1.08;
+      document.getElementById('loanMonthlyDisplay').innerText = `$${formatCurrency(total / 12)}`;
+      document.getElementById('loanTotalDisplay').innerText = `$${formatCurrency(total)}`;
+    }
+
+    // COPIAR AL PORTAPAPELES
+    function copyToClipboard(id, msg) {
+      navigator.clipboard.writeText(document.getElementById(id).innerText);
+      showToast(msg, "success");
+    }
+
+    // TOASTS
+    function showToast(text, type = "success") {
+      const c = document.getElementById('toastContainer');
+      const t = document.createElement('div');
+      t.className = `p-3.5 rounded-xl border text-xs font-semibold backdrop-blur-md shadow-2xl transition-all duration-300 flex items-center gap-2 ${
+        type === 'success' ? 'bg-emerald-950/90 border-emerald-500/40 text-emerald-200' : 'bg-rose-950/90 border-rose-500/40 text-rose-200'
+      }`;
+      t.innerHTML = `<i data-lucide="${type === 'success' ? 'check-circle' : 'alert-circle'}" class="w-4 h-4 shrink-0"></i><span>${text}</span>`;
+      c.appendChild(t);
+      lucide.createIcons();
+      setTimeout(() => { t.classList.add('opacity-0'); setTimeout(() => t.remove(), 300); }, 3500);
+    }
+
+    // AUTO-LOGIN AL CARGAR
+    window.addEventListener('DOMContentLoaded', async () => {
+      calculateLoan();
+      lucide.createIcons();
+
+      const savedAcc = localStorage.getItem('current_session_acc');
+      if (savedAcc) {
+        const snap = await database.ref('accounts/' + savedAcc).once('value');
+        if (snap.exists()) {
+          currentAccount = snap.val();
+          listenToAccountChanges(savedAcc);
+          document.getElementById('authModal').classList.add('hidden');
+          updateInterface();
+          return;
+        }
+      }
+
+      document.getElementById('authModal').classList.remove('hidden');
+    });
+  </script>
+</body>
+</html>
